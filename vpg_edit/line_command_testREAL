@@ -1,0 +1,5 @@
+Training REAL ROBOT
+
+python3 main.py --tcp_host_ip '192.168.1.5' --tcp_port 30002 --heightmap_resolution 0.0025 --push_rewards --experience_replay --explore_rate_decay --save_visualizations
+
+
