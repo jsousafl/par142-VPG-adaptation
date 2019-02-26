@@ -968,6 +968,7 @@ class Robot(object):
 
             # Attempt push
             #self.close_gripper()
+            self.close_gripper();
             self.move_to([position[0],position[1],position[2]+0.1], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.move_to([position[0],position[1],position[2]],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.move_to([push_endpoint[0],push_endpoint[1],push_endpoint[2]],[tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]])
