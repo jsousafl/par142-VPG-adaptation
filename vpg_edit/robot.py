@@ -139,6 +139,10 @@ class Robot(object):
             # Load camera pose (from running calibrate.py), intrinsics and depth scale
             self.cam_pose = np.loadtxt('real/camera_pose.txt', delimiter=' ')
             self.cam_depth_scale = np.loadtxt('real/camera_depth_scale.txt', delimiter=' ')
+            
+            # Activate gripper
+            self.PORT_GRIPPER = 63352
+            self.activate_gripper()
 
 
     def setup_sim_camera(self): #simulation method
@@ -431,18 +435,8 @@ class Robot(object):
             gripper_fully_closed = True
 
         else:
-            """self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.tcp_socket.connect((self.tcp_host_ip, self.tcp_port))
-            tcp_command = "set_digital_out(8,True)\n"
-            self.tcp_socket.send(str.encode(tcp_command))
-            self.tcp_socket.close()"""
-#            rob = urx.Robot("192.168.1.5")
-#            robotiqgrip = Robotiq_Two_Finger_Gripper(rob)
-#            robotiqgrip.close_gripper()
-            HOST = '192.168.1.5'
-            PORT = 63352
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST,PORT))
+                s.connect((self.tcp_host_ip,self.PORT_GRIPPER))
                 s.send(b'nc 192.168.1.5 63352')
                 s.send(b'SET POS 255')
                 data = s.recv(1024)
@@ -471,13 +465,8 @@ class Robot(object):
                 sim_ret, gripper_joint_position = vrep.simxGetJointPosition(self.sim_client, RG2_gripper_handle, vrep.simx_opmode_blocking)
 
         else:
-#            rob = urx.Robot("192.168.1.5")
-#            robotiqgrip = Robotiq_Two_Finger_Gripper(rob)
-#            robotiqgrip.open_gripper()
-            HOST = '192.168.1.5'
-            PORT = 63352
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST,PORT))
+                s.connect((self.tcp_host_ip,self.PORT_GRIPPER))
                 s.send(b'nc 192.168.1.5 63352')
                 s.send(b'SET POS 0')
                 data = s.recv(1024)
@@ -1050,7 +1039,14 @@ class Robot(object):
             if tool_analog_input2 > 3.0 and (abs(new_tool_analog_input2 - tool_analog_input2) < 0.01) and all([np.abs(actual_tool_pose[j] - home_position[j]) < self.tool_pose_tolerance[j] for j in range(3)]):
                 break
             tool_analog_input2 = new_tool_analog_input2
-
+            
+    def activate_gripper(self, async=False):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((self.tcp_host_ip,self.PORT_GRIPPER))
+            s.send(b'nc 192.168.1.5 63352')
+            s.send(b'SET ACT 1')
+            data = s.recv(1024)
+            s.close()
 
     # def place(self, position, orientation, workspace_limits):
     #     print('Executing: place at (%f, %f, %f)' % (position[0], position[1], position[2]))
@@ -1182,3 +1178,4 @@ class Robot(object):
 # print()
 
 # String.Format ("movej([%f,%f,%f,%f,%f, %f], a={6}, v={7})\n", j0, j1, j2, j3, j4, j5, a, v);
+
