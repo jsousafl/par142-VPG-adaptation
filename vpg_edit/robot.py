@@ -142,7 +142,7 @@ class Robot(object):
             
             # Activate gripper
             self.PORT_GRIPPER = 63352
-            self.activate_gripper()
+            #self.activate_gripper()
 
 
     def setup_sim_camera(self): #simulation method
@@ -1046,6 +1046,10 @@ class Robot(object):
             s.send(b'nc 192.168.1.5 63352')
             s.send(b'SET ACT 1')
             data = s.recv(1024)
+            time.sleep(3)
+            s.send(b'SET GTO 1')
+            data = s.recv(1024)
+            time.sleep(5)
             s.close()
 
     # def place(self, position, orientation, workspace_limits):
