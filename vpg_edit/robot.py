@@ -728,24 +728,13 @@ class Robot(object):
             tilted_tool_orientation = tool_orientation
             # Attempt grasp
             position = np.asarray(position).copy()
-            position[2] = max(position[2] - 0.05, workspace_limits[2][0])
-            '''
-            self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.tcp_socket.connect((self.tcp_host_ip, self.tcp_port))
-            tcp_command = "def process():\n"
-            tcp_command += " set_digital_out(8,False)\n"
-            tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.09)\n" % (position[0],position[1],position[2]+0.1,tool_orientation[0],tool_orientation[1],0.0,self.joint_acc*0.5,self.joint_vel*0.5)
-            tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (position[0],position[1],position[2],tool_orientation[0],tool_orientation[1],0.0,self.joint_acc*0.1,self.joint_vel*0.1)
-            tcp_command += " set_digital_out(8,True)\n"
-            tcp_command += "end\n"
-            self.tcp_socket.send(str.encode(tcp_command))
-            self.tcp_socket.close()
-            '''
+            #position[2] = max(position[2] - 0.05, workspace_limits[2][0])
+            position[2] = workspace_limits[2][0]
             
-            self.open_gripper();
+            self.open_gripper()
             self.move_to([position[0],position[1],position[2]+0.1], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
             self.move_to([position[0],position[1],position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
-            self.close_gripper();
+            self.close_gripper()
             
             '''
             # Block until robot reaches target tool position and gripper fingers have stopped moving
@@ -763,13 +752,13 @@ class Robot(object):
             '''
             
             # Check if gripper is open (grasp might be successful)
-            gripper_open = self.check_grasp();
+            gripper_open = self.check_grasp()
 
             # # Check if grasp is successful
             # grasp_success =  tool_analog_input2 > 0.26
 
             home_position = [0.15521074915228592, 0.18536901992860863, 0.10333937281420481]
-            bin_position = [0.2888231294117265, -0.008622628465251385, 0.12076970085011052]
+            bin_position = [0.22593101998862428, -0.09103914827098063, 0.18]
 
             # If gripper is open, drop object in bin and check if grasp is successful
             grasp_success = False
@@ -811,6 +800,7 @@ class Robot(object):
                 self.move_to([position[0],position[1],bin_position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
                 self.move_to([bin_position[0],bin_position[1],bin_position[2]], [tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]]);
                 self.open_gripper();
+                self.move_to([0.20665865687550386, 0.20023297385616476, bin_position[2]], [tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]]);
                 self.move_to([home_position[0],home_position[1],home_position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
                 if self.check_grasp():
                     grasp_success = True
@@ -829,19 +819,6 @@ class Robot(object):
                 self.move_to([position[0],position[1],position[2]+0.1], [tool_orientation[0],tool_orientation[1],0.0]);
                 self.move_to([home_position[0],home_position[1],home_position[2]], [tool_orientation[0],tool_orientation[1],0.0]);
             
-            '''
-            # Block until robot reaches home location
-            state_data = self.get_state()
-            tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
-            actual_tool_pose = self.parse_tcp_state_data(state_data, 'cartesian_info')
-            while True:
-                state_data = self.get_state()
-                new_tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
-                actual_tool_pose = self.parse_tcp_state_data(state_data, 'cartesian_info')
-                if (abs(new_tool_analog_input2 - tool_analog_input2) < 0.01) and all([np.abs(actual_tool_pose[j] - home_position[j]) < self.tool_pose_tolerance[j] for j in range(3)]):
-                    break
-                tool_analog_input2 = new_tool_analog_input2
-            '''
             
         return grasp_success
 
@@ -914,14 +891,10 @@ class Robot(object):
             tool_orientation_angle = np.linalg.norm(tool_orientation)
             tool_orientation_axis = tool_orientation/tool_orientation_angle
             tool_orientation_rotm = utilsedit.angle2rotm(tool_orientation_angle, tool_orientation_axis, point=None)[:3,:3]
-            print("Tool orientation : ")
-            print(tool_orientation)
             
             # Compute push direction and endpoint (push to right of rotated heightmap)
             push_length = 0.1
             push_direction = np.asarray([push_orientation[0]*np.cos(heightmap_rotation_angle) - push_orientation[1]*np.sin(heightmap_rotation_angle), push_orientation[0]*np.sin(heightmap_rotation_angle) + push_orientation[1]*np.cos(heightmap_rotation_angle), 0.0])
-            print("position : ")
-            print(position)
             position_altern = utilsedit.cart2altern(np.transpose(position)) #rotation to workspace verification
             target_u = min(max(position_altern[0] + push_direction[0]*push_length, workspace_limits[0][0]), workspace_limits[0][1])
             target_v = min(max(position_altern[1] + push_direction[1]*push_length, workspace_limits[1][0]), workspace_limits[1][1])
@@ -929,8 +902,6 @@ class Robot(object):
             target_pos_cart = utilsedit.altern2cart(target_u_v_z)
             #push_endpoint = np.asarray([target_x, target_y, position[2]])
             push_endpoint = target_pos_cart
-            print("push endpoint : ")
-            print(push_endpoint)
             push_direction.shape = (3,1)
 
             # Compute tilted tool orientation during push
@@ -943,25 +914,21 @@ class Robot(object):
             tilted_tool_orientation = tool_orientation
             # Push only within workspace limits
             position = np.asarray(position).copy()
-            print("position 2 :")
-            print(position)
             position_altern = utilsedit.cart2altern(np.transpose(position))
             position_altern[0] = min(max(position_altern[0], workspace_limits[0][0]), workspace_limits[0][1])
             position_altern[1] = min(max(position_altern[1], workspace_limits[1][0]), workspace_limits[1][1])
             position_altern[2] = max(position_altern[2] + 0.005, workspace_limits[2][0] + 0.005) # Add buffer to surface
             position = utilsedit.altern2cart(position_altern)
-            print("position 3 :")
-            print(position)
 
             home_position = [0.15521074915228592, 0.18536901992860863, 0.10333937281420481]
 
             # Attempt push
             #self.close_gripper()
             self.close_gripper();
-            self.move_to([position[0],position[1],position[2]+0.1], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+            self.move_to([position[0],position[1],min(position[2]+0.1,workspace_limits[2][1])], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.move_to([position[0],position[1],position[2]],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.move_to([push_endpoint[0],push_endpoint[1],push_endpoint[2]],[tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]])
-            self.move_to([position[0],position[1],position[2]+0.1],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+            self.move_to([position[0],position[1],min(position[2]+0.1,workspace_limits[2][1])],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.move_to([home_position[0],home_position[1],home_position[2]],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             
             push_success = True
@@ -973,72 +940,61 @@ class Robot(object):
 
     def restart_real(self):
 
-        # Compute tool orientation from heightmap rotation angle
-        grasp_orientation = [1.0,0.0]
+        grasp_orientation = [0.0,1.0]
         tool_rotation_angle = -np.pi/4
         tool_orientation = np.asarray([grasp_orientation[0]*np.cos(tool_rotation_angle) - grasp_orientation[1]*np.sin(tool_rotation_angle), grasp_orientation[0]*np.sin(tool_rotation_angle) + grasp_orientation[1]*np.cos(tool_rotation_angle), 0.0])*np.pi
-        tool_orientation_angle = np.linalg.norm(tool_orientation)
-        tool_orientation_axis = tool_orientation/tool_orientation_angle
-        tool_orientation_rotm = utilsedit.angle2rotm(tool_orientation_angle, tool_orientation_axis, point=None)[:3,:3]
+        #tool_orientation_angle = np.linalg.norm(tool_orientation)
+        #tool_orientation_axis = tool_orientation/tool_orientation_angle
+        #tool_orientation_rotm = utilsedit.angle2rotm(tool_orientation_angle, tool_orientation_axis, point=None)[:3,:3]
 
-        tilt_rotm = utilsedit.euler2rotm(np.asarray([-np.pi/4,0,0]))
-        tilted_tool_orientation_rotm = np.dot(tilt_rotm, tool_orientation_rotm)
-        tilted_tool_orientation_axis_angle = utilsedit.rotm2angle(tilted_tool_orientation_rotm)
-        tilted_tool_orientation = tilted_tool_orientation_axis_angle[0]*np.asarray(tilted_tool_orientation_axis_angle[1:4])
-
+#        tilt_rotm = utilsedit.euler2rotm(np.asarray([-np.pi/4,0,0]))
+#        tilted_tool_orientation_rotm = np.dot(tilt_rotm, tool_orientation_rotm)
+#        tilted_tool_orientation_axis_angle = utilsedit.rotm2angle(tilted_tool_orientation_rotm)
+#        tilted_tool_orientation = tilted_tool_orientation_axis_angle[0]*np.asarray(tilted_tool_orientation_axis_angle[1:4])
+#        tilted_tool_orientation = tool_orientation
+        
         # Move to box grabbing position
-        box_grab_position = [0.5,-0.35,-0.12]
-        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_socket.connect((self.tcp_host_ip, self.tcp_port))
-        tcp_command = "def process():\n"
-        tcp_command += " set_digital_out(8,False)\n"
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.09)\n" % (box_grab_position[0],box_grab_position[1],box_grab_position[2]+0.1,tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2],self.joint_acc,self.joint_vel)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_grab_position[0],box_grab_position[1],box_grab_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc,self.joint_vel)
-        tcp_command += " set_digital_out(8,True)\n"
-        tcp_command += "end\n"
-        self.tcp_socket.send(str.encode(tcp_command))
-        self.tcp_socket.close()
+        box_grab_position = [0.255,-0.023,0.050]
+        self.move_to([box_grab_position[0],box_grab_position[1],box_grab_position[2]+0.12], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+        self.open_gripper()
+        self.move_to([box_grab_position[0],box_grab_position[1],box_grab_position[2]],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+        self.close_gripper()
+        
+        
+#        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#        self.tcp_socket.connect((self.tcp_host_ip, self.tcp_port))
+#        tcp_command = "def process():\n"
+#        tcp_command += " set_digital_out(8,False)\n"
+#        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.09)\n" % (box_grab_position[0],box_grab_position[1],box_grab_position[2]+0.1,tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2],self.joint_acc,self.joint_vel)
+#        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_grab_position[0],box_grab_position[1],box_grab_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc,self.joint_vel)
+#        tcp_command += " set_digital_out(8,True)\n"
+#        tcp_command += "end\n"
+#        self.tcp_socket.send(str.encode(tcp_command))
+#        self.tcp_socket.close()
 
-        # Block until robot reaches box grabbing position and gripper fingers have stopped moving
-        state_data = self.get_state()
-        tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
-        while True:
-            state_data = self.get_state()
-            new_tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
-            actual_tool_pose = self.parse_tcp_state_data(state_data, 'cartesian_info')
-            if tool_analog_input2 < 3.7 and (abs(new_tool_analog_input2 - tool_analog_input2) < 0.01) and all([np.abs(actual_tool_pose[j] - box_grab_position[j]) < self.tool_pose_tolerance[j] for j in range(3)]):
-                break
-            tool_analog_input2 = new_tool_analog_input2
+#        # Block until robot reaches box grabbing position and gripper fingers have stopped moving
+#        state_data = self.get_state()
+#        tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
+#        while True:
+#            state_data = self.get_state()
+#            new_tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
+#            actual_tool_pose = self.parse_tcp_state_data(state_data, 'cartesian_info')
+#            if tool_analog_input2 < 3.7 and (abs(new_tool_analog_input2 - tool_analog_input2) < 0.01) and all([np.abs(actual_tool_pose[j] - box_grab_position[j]) < self.tool_pose_tolerance[j] for j in range(3)]):
+#                break
+#            tool_analog_input2 = new_tool_analog_input2
 
-        # Move to box release position
-        box_release_position = [0.5,0.08,-0.12]
-        home_position = [0.49,0.11,0.03]
-        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_socket.connect((self.tcp_host_ip, self.tcp_port))
-        tcp_command = "def process():\n"
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_release_position[0],box_release_position[1],box_release_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc*0.1,self.joint_vel*0.1)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_release_position[0],box_release_position[1],box_release_position[2]+0.3,tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc*0.02,self.joint_vel*0.02)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.29)\n" % (box_grab_position[0]-0.05,box_grab_position[1]+0.1,box_grab_position[2]+0.3,tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2],self.joint_acc*0.5,self.joint_vel*0.5)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_grab_position[0]-0.05,box_grab_position[1]+0.1,box_grab_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc*0.5,self.joint_vel*0.5)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_grab_position[0],box_grab_position[1],box_grab_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc*0.1,self.joint_vel*0.1)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (box_grab_position[0]+0.05,box_grab_position[1],box_grab_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc*0.1,self.joint_vel*0.1)
-        tcp_command += " set_digital_out(8,False)\n"
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.09)\n" % (box_grab_position[0],box_grab_position[1],box_grab_position[2]+0.1,tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2],self.joint_acc,self.joint_vel)
-        tcp_command += " movej(p[%f,%f,%f,%f,%f,%f],a=%f,v=%f,t=0,r=0.00)\n" % (home_position[0],home_position[1],home_position[2],tool_orientation[0],tool_orientation[1],tool_orientation[2],self.joint_acc,self.joint_vel)
-        tcp_command += "end\n"
-        self.tcp_socket.send(str.encode(tcp_command))
-        self.tcp_socket.close()
+        # Move to box release joint configuration 
+        release_position = [0.128,0.313,0.050]
+        home_position = [0.15521074915228592, 0.18536901992860863, 0.10333937281420481]
+        tool_orientation_aux = [-2.7998441481322605, 1.2509740563836576, -0.004983628651584068]
+        self.move_to([release_position[0],release_position[1],release_position[2]], [tool_orientation_aux[0],tool_orientation_aux[1],tool_orientation_aux[2]])
+        self.move_to([release_position[0],release_position[1],release_position[2]+0.12], [tool_orientation_aux[0],tool_orientation_aux[1],tool_orientation_aux[2]])
 
-        # Block until robot reaches home position
-        state_data = self.get_state()
-        tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
-        while True:
-            state_data = self.get_state()
-            new_tool_analog_input2 = self.parse_tcp_state_data(state_data, 'tool_data')
-            actual_tool_pose = self.parse_tcp_state_data(state_data, 'cartesian_info')
-            if tool_analog_input2 > 3.0 and (abs(new_tool_analog_input2 - tool_analog_input2) < 0.01) and all([np.abs(actual_tool_pose[j] - home_position[j]) < self.tool_pose_tolerance[j] for j in range(3)]):
-                break
-            tool_analog_input2 = new_tool_analog_input2
+        self.move_to([box_grab_position[0],box_grab_position[1],box_grab_position[2]+0.12], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+        self.move_to([box_grab_position[0],box_grab_position[1],box_grab_position[2]],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+        self.open_gripper()
+        self.move_to([box_grab_position[0],box_grab_position[1],box_grab_position[2]+0.12], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
+        self.move_to([home_position[0],home_position[1],home_position[2]],[tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             
     def activate_gripper(self, async=False):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

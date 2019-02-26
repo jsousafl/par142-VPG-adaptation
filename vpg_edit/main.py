@@ -15,7 +15,7 @@ from torch.autograd import Variable
 from robot import Robot
 from trainer import Trainer
 from logger import Logger
-import utils
+import utilsedit
 
 
 def main(args):
@@ -32,7 +32,7 @@ def main(args):
     if is_sim:
         workspace_limits = np.asarray([[-0.724, -0.276], [-0.224, 0.224], [-0.0001, 0.4]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
     else:
-        workspace_limits = np.asarray([[0.3, 0.748], [-0.224, 0.224], [-0.255, -0.1]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
+        workspace_limits = np.asarray([[-0.27, 0.24], [0.13,0.4], [-0.002, 0.15]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
     heightmap_resolution = args.heightmap_resolution # Meters per pixel of heightmap
     random_seed = args.random_seed
     force_cpu = args.force_cpu
@@ -223,7 +223,7 @@ def main(args):
         depth_img = depth_img * robot.cam_depth_scale # Apply depth scale from calibration
 
         # Get heightmap from RGB-D image (by re-projecting 3D point cloud)
-        color_heightmap, depth_heightmap = utils.get_heightmap(color_img, depth_img, robot.cam_intrinsics, robot.cam_pose, workspace_limits, heightmap_resolution)
+        color_heightmap, depth_heightmap = utilsedit.get_heightmap(color_img, depth_img, robot.cam_intrinsics, robot.cam_pose, workspace_limits, heightmap_resolution)
         valid_depth_heightmap = depth_heightmap.copy()
         valid_depth_heightmap[np.isnan(valid_depth_heightmap)] = 0
 
