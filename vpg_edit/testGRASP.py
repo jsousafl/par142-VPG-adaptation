@@ -64,11 +64,13 @@ def mouseclick_callback(event, x, y, flags, param):
 #
 #        # Convert camera to robot coordinates
 #        # camera2robot = np.linalg.inv(robot.cam_pose)
-        
+        valid_depth_heightmap = depth_heigthmap.copy()
+        valid_depth_heightmap[np.isnan(valid_depth_heightmap)] = 0        
         target_u = workspace_limits[0][0] + x*heightmap_resolution
         target_v = workspace_limits[1][1] - y*heightmap_resolution
-        target_z = depth_heigthmap[y][x] + workspace_limits[2][0]
+        target_z = min(max(valid_depth_heightmap[y][x],workspace_limits[2][0]),workspace_limits[2][1])
         position_u_v = np.transpose(np.array([target_u,target_v,target_z]))
+        print(position_u_v)
         target_position = utilsedit.altern2cart(position_u_v)
         
 #        camera2robot = robot.cam_pose

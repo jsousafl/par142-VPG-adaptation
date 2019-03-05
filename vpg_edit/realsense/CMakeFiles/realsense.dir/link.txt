@@ -1,0 +1,1 @@
+/usr/bin/c++   -std=c++11 -g  -rdynamic CMakeFiles/realsense.dir/realsense.cpp.o  -o realsense -lpthread -lrealsense2 -lGL -lGLU -lm -lglfw -lrealsense2 

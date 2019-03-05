@@ -708,7 +708,10 @@ class Robot(object):
                 vrep.simxSetObjectPosition(self.sim_client,grasped_object_handle,-1,(-0.5, 0.5 + 0.05*float(grasped_object_ind), 0.1),vrep.simx_opmode_blocking)
 
         else:
-
+            
+            home_position = [0.15521074915228592, 0.18536901992860863, 0.10333937281420481]
+            bin_position = [0.22593101998862428, -0.09103914827098063, 0.2]
+            
             # Compute tool orientation from heightmap rotation angle
             grasp_orientation = [0.0,1.0]
             if heightmap_rotation_angle > np.pi:
@@ -731,8 +734,9 @@ class Robot(object):
             #position[2] = max(position[2] - 0.05, workspace_limits[2][0])
             position[2] = workspace_limits[2][0]
             
+            self.move_to([home_position[0],home_position[1],home_position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.open_gripper()
-            self.move_to([position[0],position[1],position[2]+0.1], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
+            self.move_to([position[0],position[1],position[2]+0.08], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.move_to([position[0],position[1],position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]])
             self.close_gripper()
             
@@ -756,9 +760,6 @@ class Robot(object):
 
             # # Check if grasp is successful
             # grasp_success =  tool_analog_input2 > 0.26
-
-            home_position = [0.15521074915228592, 0.18536901992860863, 0.10333937281420481]
-            bin_position = [0.22593101998862428, -0.09103914827098063, 0.18]
 
             # If gripper is open, drop object in bin and check if grasp is successful
             grasp_success = False
@@ -797,10 +798,10 @@ class Robot(object):
                     if abs(measurements[0] - measurements[1]) < 0.1:
                         grasp_success = True
                 '''
-                self.move_to([position[0],position[1],bin_position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
+                self.move_to([position[0],position[1],position[2]+0.08], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
                 self.move_to([bin_position[0],bin_position[1],bin_position[2]], [tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]]);
                 self.open_gripper();
-                self.move_to([0.20665865687550386, 0.20023297385616476, bin_position[2]], [tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]]);
+                self.move_to([0.36, 0.14, bin_position[2]-0.12], [tilted_tool_orientation[0],tilted_tool_orientation[1],tilted_tool_orientation[2]]);
                 self.move_to([home_position[0],home_position[1],home_position[2]], [tool_orientation[0],tool_orientation[1],tool_orientation[2]]);
                 if self.check_grasp():
                     grasp_success = True
