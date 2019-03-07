@@ -817,7 +817,7 @@ class Robot(object):
                 self.tcp_socket.send(str.encode(tcp_command))
                 self.tcp_socket.close()
                 '''
-                self.move_to([position[0],position[1],position[2]+0.1], [tool_orientation[0],tool_orientation[1],0.0]);
+                self.move_to([position[0],position[1],position[2]+0.08], [tool_orientation[0],tool_orientation[1],0.0]);
                 self.move_to([home_position[0],home_position[1],home_position[2]], [tool_orientation[0],tool_orientation[1],0.0]);
             
             
