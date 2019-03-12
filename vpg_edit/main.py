@@ -13,7 +13,7 @@ from collections import namedtuple
 import torch  
 from torch.autograd import Variable
 from robot import Robot
-from trainer import Trainer
+from trainer_origin import Trainer
 from logger import Logger
 import utilsedit
 
@@ -32,7 +32,7 @@ def main(args):
     if is_sim:
         workspace_limits = np.asarray([[-0.724, -0.276], [-0.224, 0.224], [-0.0001, 0.4]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
     else:
-        workspace_limits = np.asarray([[-0.27, 0.24], [0.13,0.4], [-0.002, 0.15]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
+        workspace_limits = np.asarray([[-0.112,0.112], [0.18,0.404], [-0.002, 0.15]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
     heightmap_resolution = args.heightmap_resolution # Meters per pixel of heightmap
     random_seed = args.random_seed
     force_cpu = args.force_cpu

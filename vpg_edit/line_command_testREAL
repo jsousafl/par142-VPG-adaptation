@@ -2,4 +2,5 @@ Training REAL ROBOT
 
 python3 main.py --tcp_host_ip '192.168.1.5' --tcp_port 30002 --heightmap_resolution 0.0025 --push_rewards --experience_replay --explore_rate_decay --save_visualizations
 
+python3 main.py --tcp_host_ip '192.168.1.5' --tcp_port 30002 --heightmap_resolution 0.00125 --push_rewards --experience_replay --explore_rate_decay --save_visualizations --load_snapshot --snapshot_file 'logs/2019-03-08.16:52:39/models/snapshot-backup.reinforcement.pth' --continue_logging --logging_directory 'logs/2019-03-08.16:52:39'
 
