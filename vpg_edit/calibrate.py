@@ -1,79 +1,117 @@
 #!/usr/bin/env python
-
-import matplotlib.pyplot as plt
+import math
 import numpy as np
 import time
 import cv2
-from real.camera import Camera
 from robot import Robot
-from scipy import optimize  
-from mpl_toolkits.mplot3d import Axes3D  
+from scipy import optimize   
 
-
-# User options (change me)
-# --------------- Setup options ---------------
-tcp_host_ip = '192.168.1.5' # IP and port to robot arm as TCP client (UR5)
+tcp_host_ip = '192.168.1.5' # IP and port to robot arm as TCP client (UR3)
 tcp_port = 30002
-rtc_host_ip = '192.168.1.5' # IP and port to robot arm as real-time client (UR5)
+rtc_host_ip = '100.127.7.223' # IP and port to robot arm as real-time client (UR3)
 rtc_port = 30003
-#WORKSPACE O
-workspace_limits = np.asarray([[0.05, 0.05], [0.35, 0.4], [0.1, 0.1]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
-calib_grid_step = 0.05
-checkerboard_offset_from_tool = [0,-0.13,0.02]#NEED TO CHANGE
-tool_orientation = [-1.82, 0.72, 1.57] # [0,-2.22,2.22] # [2.22,2.22,0]
-# ---------------------------------------------4
+workspace_limits = np.asarray([[-0.105, 0.432], [-0.054, 0.468], [0.0, 0.045]]) # Cols: min max, Rows: u v z (define workspace limits in robot coordinates)
+checkerboard_offset_from_tool = [-0.0478,0.0378,-0.04]
+tool_orientation = [-2.8423740026858066, -1.2878981887531054, -0.047896657364744154] #DEFINED AND MEASURED ORIENTATION
+point_origin_cube = [-0.065,0.262, 0.0] # DEFINED AND MESURED ORIGIN POINT (FACE 1 AND 2)
+point_end_face2 = [0.269,-0.054,0.0] # DEFINED AND MESURED END POINT OF FACE 2
+point_end_face1 = [0.096,0.449,0.0] # DEFINED AND MESURED END POINT OF FACE 1
 
+# DEFINITION OF CALIBRATION GRID 
+###############################################################################
+calib_grid_step = 0.0225
+def intercalate(L,num_divisions):
+    num_elements = int(len(L)/num_divisions)
+    intercalate = []
+    for j in range(num_elements):
+        for i in range(num_divisions):
+            intercalate.append(L[j + i*num_elements])
+    return intercalate
 
-# Construct 3D calibration grid across workspace
-gridspace_x = np.linspace(workspace_limits[0][0], workspace_limits[0][1], 1 + (workspace_limits[0][1] - workspace_limits[0][0])/calib_grid_step)
-gridspace_y = np.linspace(workspace_limits[1][0], workspace_limits[1][1], 1 + (workspace_limits[1][1] - workspace_limits[1][0])/calib_grid_step)
+num_step_face1 = 3
+step_face1 = (point_end_face1[0]-point_origin_cube[0])/num_step_face1
+   
 gridspace_z = np.linspace(workspace_limits[2][0], workspace_limits[2][1], 1 + (workspace_limits[2][1] - workspace_limits[2][0])/calib_grid_step)
-calib_grid_x, calib_grid_y, calib_grid_z = np.meshgrid(gridspace_x, gridspace_y, gridspace_z)
-num_calib_grid_pts = calib_grid_x.shape[0]*calib_grid_x.shape[1]*calib_grid_x.shape[2]
+
+a_perpendicular = math.tan(138.2/180*math.pi) # angle entre la face 1 et l'axe x
+b_perpendicular = point_origin_cube[1]-a_perpendicular*point_origin_cube[0]
+num_step_face2 = 3
+step_face2 = (point_end_face2[0]-point_origin_cube[0])/num_step_face2
+
+a = math.tan((138.2-90)/180*math.pi) # angle entre la face 2 et l'axe x
+
+x_initial = np.zeros(num_step_face2+1)
+y_initial = np.zeros(num_step_face2+1)
+x = np.array([])
+y = np.array([])
+
+for i in range(num_step_face2+1):
+    x_initial[i] = point_origin_cube[0] + i*step_face2
+    y_initial[i] = a_perpendicular*x_initial[i] + b_perpendicular
+    b = y_initial[i]-a*x_initial[i]
+    for j in range(num_step_face1+1):
+        x = np.append(x,[x_initial[i] + j*step_face1])
+        y = np.append(y,[a*x[-1] + b])
+
+z = np.array([])
+for i in range((num_step_face2+1)*(num_step_face1+1)):
+    z = np.append(z,gridspace_z)
+x = np.split(x,(num_step_face2+1)*(num_step_face1+1))
+y = np.split(y,(num_step_face2+1)*(num_step_face1+1))
+z = np.split(z,len(z))
+
+calib_grid_x, calib_grid_z = np.meshgrid(x, gridspace_z)
+calib_grid_y, calib_grid_z = np.meshgrid(y, gridspace_z)
+num_calib_grid_pts = calib_grid_x.shape[0]*calib_grid_x.shape[1]
 calib_grid_x.shape = (num_calib_grid_pts,1)
 calib_grid_y.shape = (num_calib_grid_pts,1)
 calib_grid_z.shape = (num_calib_grid_pts,1)
-calib_grid_pts = np.concatenate((calib_grid_x, calib_grid_y, calib_grid_z), axis=1)
+calib_grid_x = np.array(calib_grid_x)
+calib_grid_x = intercalate(calib_grid_x,len(gridspace_z))
+calib_grid_y = intercalate(calib_grid_y,len(gridspace_z))
+calib_grid_pts = np.concatenate((calib_grid_x, calib_grid_y, z), axis=1)
+
+###############################################################################
+#ROBOT SETUP
+robot = Robot(False, None, None, workspace_limits,
+              tcp_host_ip, tcp_port, rtc_host_ip, rtc_port,
+              False, None, None)
+
+SECURITY_POSITION = [0.1642542441737147, 0.22407768353652058, 0.09311416877891272]
+SECURITY_ORIENTATION = [-2.8095352019503803, -1.143738023156609, -0.10212882587827629]
+
+robot.move_to(SECURITY_POSITION,SECURITY_ORIENTATION)
+time.sleep(0.5)
+
+robot.joint_acc = 1
+robot.joint_vel = 1
+
+###############################################################################
+#START OF CALIBRATION
 
 measured_pts = []
 observed_pts = []
 observed_pix = []
 
-# Move robot to home pose
-print('Connecting to robot...')
-robot = Robot(False, None, None, workspace_limits,
-              tcp_host_ip, tcp_port, rtc_host_ip, rtc_port,
-              False, None, None)
-#robot.open_gripper()
-
-# Slow down robot
-robot.joint_acc = 0.25
-robot.joint_vel = 0.5
-
-# Make robot gripper point upwards (no utility)
-#robot.move_joints([-np.pi, -np.pi/2, np.pi/2, 0, np.pi/2, np.pi])
-
 # Move robot to each calibration point in workspace
 print('Collecting data...')
 for calib_pt_idx in range(num_calib_grid_pts):
     tool_position = calib_grid_pts[calib_pt_idx,:]
-    print("Position")
-    print(tool_position)
-    print("Orientation")
-    print(tool_orientation)
     robot.move_to(tool_position, tool_orientation)
-    time.sleep(1)
+    time.sleep(0.5)
     
     # Find checkerboard center
-    checkerboard_size = (3,3)
+    checkerboard_size = (3,3) # Use (3,3) to checkerboard 4x4
     refine_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     camera_color_img, camera_depth_img = robot.get_camera_data()
     bgr_color_data = cv2.cvtColor(camera_color_img, cv2.COLOR_RGB2BGR)
     gray_data = cv2.cvtColor(bgr_color_data, cv2.COLOR_RGB2GRAY)
     checkerboard_found, corners = cv2.findChessboardCorners(gray_data, checkerboard_size, None, cv2.CALIB_CB_ADAPTIVE_THRESH)
+    
     if checkerboard_found:
+        print('-------------------------- CHECKERBOARD DETECTED ---------------------------------')
         corners_refined = cv2.cornerSubPix(gray_data, corners, (3,3), (-1,-1), refine_criteria)
-
+        
         # Get observed checkerboard center 3D point in camera space
         checkerboard_pix = np.round(corners_refined[4,0,:]).astype(int)
         checkerboard_z = camera_depth_img[checkerboard_pix[1]][checkerboard_pix[0]]
@@ -84,21 +122,16 @@ for calib_pt_idx in range(num_calib_grid_pts):
 
         # Save calibration point and observed checkerboard center
         observed_pts.append([checkerboard_x,checkerboard_y,checkerboard_z])
-        # tool_position[2] += checkerboard_offset_from_tool
-        tool_position = tool_position + checkerboard_offset_from_tool
+        tool_position = tool_position - checkerboard_offset_from_tool
 
         measured_pts.append(tool_position)
         observed_pix.append(checkerboard_pix)
 
         # Draw and display the corners
-        # vis = cv2.drawChessboardCorners(robot.camera.color_data, checkerboard_size, corners_refined, checkerboard_found)
         vis = cv2.drawChessboardCorners(bgr_color_data, (1,1), corners_refined[4,:,:], checkerboard_found)
         cv2.imwrite('%06d.png' % len(measured_pts), vis)
-        cv2.imshow('Calibration',vis)
+        #cv2.imshow('Calibration',vis)
         cv2.waitKey(10)
-
-# Move robot back to home pose
-#robot.go_home()
 
 measured_pts = np.asarray(measured_pts)
 observed_pts = np.asarray(observed_pts)
@@ -155,6 +188,11 @@ np.savetxt('real/camera_depth_scale.txt', camera_depth_offset, delimiter=' ')
 get_rigid_transform_error(camera_depth_offset)
 camera_pose = np.linalg.inv(world2camera)
 np.savetxt('real/camera_pose.txt', camera_pose, delimiter=' ')
+print('Number of points')
+print(len(measured_pts))
+print('Number of observed points')
+print(len(observed_pts))
+
 print('Done.')
 
 # DEBUG CODE -----------------------------------------------------------------------------------

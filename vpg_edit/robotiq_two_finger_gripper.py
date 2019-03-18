@@ -88,10 +88,7 @@ class RobotiqScript(URScript):
     
     def _rq_get_var(self, var_name, nbytes):
         self._socket_send_string("GET {}".format(var_name),self.socket_name)
-        print('----------------- dedans rq get var --------------------')
-        print("GET {}".format(var_name),self.socket_name)
         var_value = self._socket_read_byte_list(nbytes, self.socket_name)
-        print('var_value : {}'.format(var_value))
         return var_value
 
     def _get_gripper_fault(self):
@@ -125,21 +122,6 @@ class RobotiqScript(URScript):
         """
         value = self._constrain_unsigned_char(value)
         self._socket_set_var(POS, value, self.socket_name)
-    
-    ################### C'est moi qui a fait ca ###############################
-    
-    def _get_gripper_position(self):
-        print('get var : {}'.format(self._socket_get_var(POS, self.socket_name)))   
-        
-    def test_gripper(self):
-        print('--------- test gripper--------------')
-        self._socket_send_string('GET OBJ', self.socket_name)
-        self._sync()
-        ack = self._socket_read_string(self.socket_name)
-        #ack = self._socket_read_byte_list(3, self.socket_name)
-        print(ack)
-        
-    ###########################################################################
     
     def _set_gripper_speed(self, value):
         """
@@ -231,13 +213,6 @@ class Robotiq_Two_Finger_Gripper(object):
         urscript._sleep(0.1)
 
         return urscript
-    
-    def get_status_obj(self):
-        print("------------------------ j'suis ici ------------------------")
-        urscript = self._get_new_urscript()
-        if urscript._rq_is_object_detected():
-            print("--------------- ca marche ----------------------")
-        print("------------------------ j'suis la ------------------------")
 
     def gripper_action(self, value):
         """
@@ -265,25 +240,3 @@ class Robotiq_Two_Finger_Gripper(object):
 
     def close_gripper(self):
         self.gripper_action(255)
-
-    ################### C'est moi qui a fait ca ###############################
-    
-    def test(self):
-        urscript = self._get_new_urscript()
-        sleep = 2.0
-        #self.close_gripper()
-        urscript._rq_is_object_detected()
-        urscript._sleep(sleep)
-        
-        # Send the script
-        self.robot.send_program(urscript())
-        time.sleep(sleep)
-        
-    def test2(self):        
-        urscript = self._get_new_urscript()
-        # Send the script
-        print('------------test2 avant get gripper --------------')
-        print(urscript._rq_is_object_detected())
-        print('------------test2 apres get gripper --------------')
-     
-    ###########################################################################
