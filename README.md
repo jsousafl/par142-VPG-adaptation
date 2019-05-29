@@ -20,9 +20,12 @@ Le but de ce projet est d’utiliser un bras robotique (l'UR3 d'Universal Robot 
 La première phase consistera à se familiariser avec le code VPG actuellement développé par l’université de Princeton et disponible sur github (https://github.com/andyzeng/visual-pushing-grasping). Cela nécessitera d’étudier des outils informatiques comme PyTorch (Deep Learning), V-Rep (simulateur) et les algorithmes pour contrôler le robot UR3.
  
 
-Dans un second temps, les étudiants partiront du code existant pour le faire fonctionner avec l’environnement disponible au laboratoire de l’Ecole Centrale de Lyon. En particulier, des modifications seront nécessaire pour 1) adapter le code contrôlant le robot (UR5 pour Princeton, UR3 pour ECL), 2) vérifier que les procédures de calibration sont adaptées avec ces différents changements et 3) testerl’apprentissage en utilisant les objets disponibles à l’ECL.
+Dans un second temps, les étudiants partiront du code existant pour le faire fonctionner avec l’environnement disponible au laboratoire de l’Ecole Centrale de Lyon. En particulier, des modifications seront nécessaire pour:
 
-En fonction de l’avancée, les étudiants pourront être amenés à développer des applications supplémentaires, par exemple en permettant de trier les pièces dans différentes boîtes de tri en fonction de leur forme ou couleur, ou encore en initialisant et résolvant le jeu des Tours de Hanoi.
+1) adapter le code contrôlant le robot (UR5 pour Princeton, UR3 pour ECL)
+2) vérifier que les procédures de calibration sont adaptées avec ces différents changements
+3) tester l’apprentissage en utilisant les objets disponibles à l’ECL.
+
 
 Références:
 
